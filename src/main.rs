@@ -16,7 +16,7 @@ fn main() {
     let mut chip8 = Chip8::new();
 
     let mut prog: Vec<u8> = vec![];
-    
+
     let mut f = match File::open(&args[1]) {
         Ok(file) => file,
         Err(why) => panic!(why),
@@ -24,4 +24,7 @@ fn main() {
     f.read_to_end(&mut prog).expect("Could not read program");
 
     chip8.load(prog);
+    loop {
+        chip8.emulate_cycle();
+    }
 }
