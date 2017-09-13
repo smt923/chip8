@@ -1,4 +1,12 @@
+use display::Display;
+use input::Input;
+
 use std::{thread, time};
+use rand;
+use rand::Rng;
+
+pub const SCREEN_W: usize = 64;
+pub const SCREEN_H: usize = 32;
 
 pub struct Chip8 {
     /*
@@ -6,20 +14,22 @@ pub struct Chip8 {
         0x050-0x0A0 - Used for the built in 4x5 pixel font set (0-F)
         0x200-0xFFF - Program ROM and work RAM
     */
-    pub opcode: u16,
-    pub memory: [u8; 4096],
-    pub V: [u8; 16],
-    pub i: usize,
-    pub pc: usize,
+    opcode: u16,
+    memory: [u8; 4096],
+    V: [u8; 16],
+    i: usize,
+    pc: usize,
 
-    pub gfx: [u8; 64 * 32],
-    pub delay_timer: u8,
-    pub sound_timer: u8,
+    delay_timer: u8,
+    sound_timer: u8,
 
-    pub stack: [u16; 16],
-    pub sp: usize,
+    stack: [u16; 16],
+    sp: usize,
+    pub gfx: [u8; SCREEN_W*SCREEN_H],
+    pub draw_flag: bool,
 
-    pub key: [u8; 16],
+    pub input: Input,
+    pub display: Display,
 }
 
 impl Default for Chip8 {
@@ -31,14 +41,16 @@ impl Default for Chip8 {
             i: 0,
             pc: 0x200,
 
-            gfx: [0; 64 * 32],
             delay_timer: 0,
             sound_timer: 0,
 
             stack: [0; 16],
             sp: 0,
+            gfx: [0; SCREEN_W*SCREEN_H],
+            draw_flag: false,
 
-            key: [0; 16],
+            input: Input::new(),
+            display: Display::new(),
         }
     }
 }
@@ -60,12 +72,10 @@ impl Chip8 {
         self.V = [0; 16];
         self.i = 0;
         self.pc = 0x200;
-        self.gfx = [0; 64 * 32];
         self.delay_timer = 0;
         self.sound_timer = 0;
         self.stack = [0; 16];
         self.sp = 0;
-        self.key = [0; 16];
     }
 
     pub fn debug_memory(&self) {
@@ -87,7 +97,7 @@ impl Chip8 {
     pub fn emulate_cycle(&mut self) {
         self.fetch_opcode();
         // debug print to get a rough idea of what's going on
-        println!("{}: 0x{:04X}", self.pc, self.opcode);
+        //println!("{}: 0x{:04X}", self.pc, self.opcode);
         self.opcodes();
 
         if self.delay_timer > 0 {
@@ -99,7 +109,7 @@ impl Chip8 {
             }
             self.sound_timer -= 1;
         }
-        thread::sleep(time::Duration::from_millis(100))
+        //thread::sleep(time::Duration::from_millis(100))
     }
 
     fn fetch_opcode(&mut self) {
@@ -147,13 +157,14 @@ impl Chip8 {
 
     fn x0(&mut self) {
         match self.opcode & 0x000F {
-            0x0000 => { /*self.display.clear()*/ }
+            0x0000 => { self.display.clear() }
             0x000E => {
                 self.sp -= 1;
                 self.pc = self.stack[self.sp] as usize;
             }
             _ => not_implemented(self.opcode as usize, self.pc),
         }
+        self.pc += 2;
     }
     fn x1(&mut self) {
         self.pc = self.op_nnn() as usize;
@@ -164,23 +175,32 @@ impl Chip8 {
         self.pc = self.op_nnn() as usize;
     }
     fn x3(&mut self) {
-        not_implemented(self.opcode as usize, self.pc);
-        self.pc += 2;
+        if self.V[self.op_x()] == self.op_nn() {
+            self.pc += 4;
+        } else {
+            self.pc += 2;
+        }
     }
     fn x4(&mut self) {
-        not_implemented(self.opcode as usize, self.pc);
-        self.pc += 2;
+        if self.V[self.op_x()] != self.op_nn() {
+            self.pc += 4;
+        } else {
+            self.pc += 2;
+        }
     }
     fn x5(&mut self) {
-        not_implemented(self.opcode as usize, self.pc);
-        self.pc += 2;
+        if self.V[self.op_x()] == self.V[self.op_y()] {
+            self.pc += 4;
+        } else {
+            self.pc += 2;
+        }
     }
     fn x6(&mut self) {
-        self.V[self.op_x() as usize] = self.op_nn();
+        self.V[self.op_x()] = self.op_nn();
         self.pc += 2;
     }
     fn x7(&mut self) {
-        not_implemented(self.opcode as usize, self.pc);
+        self.V[self.op_x()] += self.op_nn();
         self.pc += 2;
     }
     fn x8(&mut self) {
@@ -191,51 +211,118 @@ impl Chip8 {
             3 => self.V[self.op_x()] ^= self.V[self.op_y()],
             4 => {
                 self.V[self.op_x()] += self.V[self.op_y()];
-                self.V[15] = if self.V[self.op_x()] < self.V[self.op_y()] {
-                    1
-                } else {
-                    0
-                };
+                self.V[0xF] = if self.V[self.op_x()] < self.V[self.op_y()] { 1 } else { 0 };
+            }
+            5 => {
+                self.V[0xF] = if self.V[self.op_x()] > self.V[self.op_y()] { 0 } else { 1 };
+                self.V[self.op_x()] -= self.V[self.op_y()];
+            }
+            6 => {
+                self.V[0xF] = self.V[self.op_x()] & 0x1;
+                self.V[self.op_x()] >>= 1;
+            }
+            7 => {
+                self.V[0xF] = if self.V[self.op_x()] > self.V[self.op_y()] { 0 } else { 1 };
+                self.V[self.op_x()] = self.V[self.op_y()] - self.V[self.op_x()];
+            }
+            0xE => {
+                self.V[0xF] = self.V[self.op_x()] >> 7;
+                self.V[self.op_x()] <<= 1;
             }
             _ => not_implemented(self.opcode as usize, self.pc),
         }
+        self.pc += 2;
     }
     fn x9(&mut self) {
-        not_implemented(self.opcode as usize, self.pc);
-        self.pc += 2;
+        if self.V[self.op_x()] != self.V[self.op_y()] {
+            self.pc += 4;
+        } else {
+            self.pc += 2;
+        }
     }
     fn xA(&mut self) {
         self.i = self.op_nnn() as usize;
         self.pc += 2;
     }
     fn xB(&mut self) {
-        not_implemented(self.opcode as usize, self.pc);
-        self.pc += 2;
+        self.pc = (self.V[0x0] as u16 + self.op_nnn()) as usize;
     }
     fn xC(&mut self) {
-        not_implemented(self.opcode as usize, self.pc);
+        let mut n = rand::thread_rng().gen_range(0, 255);
+        self.V[self.op_x()] = n & self.op_nn();
         self.pc += 2;
     }
     fn xD(&mut self) {
-        not_implemented(self.opcode as usize, self.pc);
+        let x = self.V[self.op_x()] as usize;
+        let y = self.V[self.op_y()] as usize;
+        let height = self.op_n();
+        self.V[0xF] = 0;
+
+        for yl in 0..height {
+            let pixel = self.memory[self.i + yl as usize] as u16;
+            for xl in 0..8 {
+                if pixel & (0x80 >> xl) != 0 {
+                    if self.gfx[x + xl + ((y + yl as usize) * SCREEN_W)] == 1 {
+                        self.V[0xF] = 1;
+                    }
+                    self.gfx[x + xl + ((y + yl as usize) * SCREEN_W)] ^= 1;
+                }
+            }
+        }
+        self.draw_flag = true;
         self.pc += 2;
     }
     fn xE(&mut self) {
-        not_implemented(self.opcode as usize, self.pc);
-        self.pc += 2;
+        let k = self.V[self.op_x()] as usize;
+        self.pc += match self.opcode & 0x00FF {
+            0x9E => if self.input.pressed(k) { 4 } else { 2 },
+            0xA1 => if !self.input.pressed(k) { 4 } else { 2 },
+            _    => 2
+        }
     }
     fn xF(&mut self) {
         match self.opcode & 0x00FF {
+            0x07 => { self.V[self.op_x()] = self.delay_timer; }
+            0x0A => { self.get_keypress(); }
+            0x15 => { self.delay_timer = self.V[self.op_x()] }
+            0x18 => { self.sound_timer = self.V[self.op_x()] }
+            0x1E => { self.i += self.V[self.op_x()] as usize }
+            0x29 => { self.i = (self.V[self.op_x()] as usize) * 5; }
             0x33 => {
                 self.memory[self.i] = self.V[self.op_x()] / 100;
                 self.memory[self.i + 1] = (self.V[self.op_x()] / 10) % 10;
                 self.memory[self.i + 2] = (self.V[self.op_x()] % 100) % 10;
             }
+            0x55 => {
+                for i in 0..self.op_x()+1 {
+                    self.memory[self.i + i] = self.V[i]
+                }
+            }
+            0x65 => {
+                for i in 0..self.op_x()+1 {
+                    self.V[i] = self.memory[self.i + i] 
+                }
+            }
             _ => not_implemented(self.opcode as usize, self.pc),
         }
         self.pc += 2;
     }
+
+    fn get_keypress(&mut self) {
+        for i in 0u8..16 {
+                if self.input.pressed(i as usize) {
+                    self.V[self.op_x()] = i;
+                    break;
+                }
+            }
+        self.pc -= 2;
+    }
+
+    pub fn get_internal_display(&self) -> &[u8] {
+        &self.gfx
+    }
 }
+
 
 fn not_implemented(op: usize, pc: usize) {
     println!(
