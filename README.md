@@ -2,6 +2,11 @@
 
 Emulating the [CHIP-8](https://en.wikipedia.org/wiki/CHIP-8) using Rust
 
+## problems
+currently, the emulator will panic often when not in release mode due to overflows in the arithmetic opcodes
+
+there also seems to be a bug with flickering moving sprites and possibly related, these sprites having broken collisions
+
 ## todo
 - [X] cleanup opcode matching
 - [X] add missing opcodes

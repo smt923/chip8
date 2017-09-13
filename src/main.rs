@@ -59,8 +59,8 @@ fn main() {
         chip8.emulate_cycle();
         if chip8.draw_flag {
             chip8.display.draw(&chip8.gfx);
-            chip8.draw_flag = false;
             chip8.display.clear();
+            chip8.draw_flag = false;
         }
         ::std::thread::sleep(Duration::new(0, 1_000_000u32 / 60));
     }
