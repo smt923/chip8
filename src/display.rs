@@ -40,10 +40,9 @@ impl Display {
             }
         }
         match self.canvas.fill_rects(&rects) {
-            Ok(()) => (),
+            Ok(()) => self.canvas.present(),
             Err(why) => println!("{}", why)
         };
-        self.canvas.present();
     }
 
     /// Shortcut to clearing our screen with the correct colors
