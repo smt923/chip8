@@ -2,8 +2,12 @@
 
 Emulating the [CHIP-8](https://en.wikipedia.org/wiki/CHIP-8) using Rust
 
+![Tetris](https://i.imgur.com/eEb0CYg.png)
+
 ## problems
 currently, the emulator will panic often when not in release mode due to overflows in the arithmetic opcodes
+
+some roms just do not seem to work at all, or will panic under random conditions
 
 there also seems to be a bug with flickering moving sprites and possibly related, these sprites having broken collisions
 
