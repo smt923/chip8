@@ -157,7 +157,11 @@ impl Chip8 {
 
     fn x0(&mut self) {
         match self.opcode & 0x000F {
-            0x0000 => { self.display.clear() }
+            0x0000 => {
+                self.clear_gfx();
+                self.display.clear();
+                self.draw_flag = true;
+            }
             0x000E => {
                 self.sp -= 1;
                 self.pc = self.stack[self.sp] as usize;
@@ -322,6 +326,12 @@ impl Chip8 {
                 }
             }
         self.pc -= 2;
+    }
+
+    pub fn clear_gfx(&mut self) {
+        for i in 0..self.gfx.len() {
+            self.gfx[i] = 0;
+        }
     }
 
     pub fn get_internal_display(&self) -> &[u8] {
