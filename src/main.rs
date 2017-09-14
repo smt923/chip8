@@ -62,6 +62,6 @@ fn main() {
             chip8.display.draw(&chip8.gfx);
             chip8.draw_flag = false;
         }
-        ::std::thread::sleep(Duration::new(0, 1_000_000u32 / 60));
+        std::thread::sleep(Duration::new(0, 1_000_000u32 / 60));
     }
 }
