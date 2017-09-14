@@ -8,12 +8,18 @@ use rand::Rng;
 pub const SCREEN_W: usize = 64;
 pub const SCREEN_H: usize = 32;
 
+/// This represents the 'core' and cpu of the system, along with some
+/// fields for easy access to useful things we need to use elsewhere.
+///
+/// 'gfx' here is an internal representation of the graphics state, but
+/// is not directly outputted to anything, currently, SDL takes a copy of this
+/// and draws a scaled up verison using it.
+///
+/// Memory Reference:
+/// 0x000-0x1FF - Chip 8 interpreter (contains font set in emu)
+/// 0x050-0x0A0 - Used for the built in 4x5 pixel font set (0-F)
+/// 0x200-0xFFF - Program ROM and work RAM
 pub struct Chip8 {
-    /*
-        0x000-0x1FF - Chip 8 interpreter (contains font set in emu)
-        0x050-0x0A0 - Used for the built in 4x5 pixel font set (0-F)
-        0x200-0xFFF - Program ROM and work RAM
-    */
     opcode: u16,
     memory: [u8; 4096],
     V: [u8; 16],
