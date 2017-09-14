@@ -262,10 +262,16 @@ impl Chip8 {
             let pixel = self.memory[self.i + yl as usize] as u16;
             for xl in 0..8 {
                 if pixel & (0x80 >> xl) != 0 {
-                    if self.gfx[x + xl + ((y + yl as usize) * SCREEN_W)] == 1 {
+                    let mut idx = (x + xl + ((y + yl as usize) * SCREEN_W));
+                    if idx > 2047 {
+                        idx = 0
+                    } else if idx < 0 {
+                        idx = 2047
+                    }
+                    if self.gfx[idx] == 1 {
                         self.V[0xF] = 1;
                     }
-                    self.gfx[x + xl + ((y + yl as usize) * SCREEN_W)] ^= 1;
+                    self.gfx[idx] ^= 1;
                 }
             }
         }
