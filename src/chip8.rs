@@ -210,7 +210,7 @@ impl Chip8 {
         self.pc += 2;
     }
     fn x7(&mut self) {
-        self.V[self.op_x()] += self.op_nn();
+        self.V[self.op_x()] = self.V[self.op_x()].wrapping_add(self.op_nn());
         self.pc += 2;
     }
     fn x8(&mut self) {
@@ -220,24 +220,39 @@ impl Chip8 {
             2 => self.V[self.op_x()] &= self.V[self.op_y()],
             3 => self.V[self.op_x()] ^= self.V[self.op_y()],
             4 => {
-                self.V[self.op_x()] += self.V[self.op_y()];
-                self.V[0xF] = if self.V[self.op_x()] < self.V[self.op_y()] { 1 } else { 0 };
+                let vx = self.V[self.op_x()];
+                let vy = self.V[self.op_y()];
+                let (val, flag) = vx.overflowing_add(vy);
+                self.V[0xF] = if flag { 1 } else { 0 };
+                self.V[self.op_x()] = val;
             }
             5 => {
-                self.V[0xF] = if self.V[self.op_x()] > self.V[self.op_y()] { 0 } else { 1 };
-                self.V[self.op_x()] -= self.V[self.op_y()];
+                let vx = self.V[self.op_x()];
+                let vy = self.V[self.op_y()];
+                let (val, flag) = vx.overflowing_sub(vy);
+                self.V[0xF] = if flag { 1 } else { 0 };
+                self.V[self.op_x()] = val;
             }
             6 => {
-                self.V[0xF] = self.V[self.op_x()] & 0x1;
-                self.V[self.op_x()] >>= 1;
+                let vx = self.V[self.op_x()];
+                let vy = self.V[self.op_y()];
+                let (val, flag) = vx.overflowing_shr(vy as u32);
+                self.V[0xF] = if flag { 1 } else { 0 };
+                self.V[self.op_x()] = val;
             }
             7 => {
-                self.V[0xF] = if self.V[self.op_x()] > self.V[self.op_y()] { 0 } else { 1 };
-                self.V[self.op_x()] = self.V[self.op_y()] - self.V[self.op_x()];
+                let vx = self.V[self.op_x()];
+                let vy = self.V[self.op_y()];
+                let (val, flag) = vy.overflowing_sub(vx);
+                self.V[0xF] = if flag { 1 } else { 0 };
+                self.V[self.op_x()] = val;
             }
             0xE => {
-                self.V[0xF] = self.V[self.op_x()] >> 7;
-                self.V[self.op_x()] <<= 1;
+                let vx = self.V[self.op_x()];
+                let vy = self.V[self.op_y()];
+                let (val, flag) = vx.overflowing_shl(vy as u32);
+                self.V[0xF] = if flag { 1 } else { 0 };
+                self.V[self.op_x()] = val;
             }
             _ => not_implemented(self.opcode as usize, self.pc),
         }
@@ -273,10 +288,10 @@ impl Chip8 {
             for xl in 0..8 {
                 if pixel & (0x80 >> xl) != 0 {
                     let mut idx = (x + xl + ((y + yl as usize) * SCREEN_W));
-                    if idx > 2047 {
-                        idx = 0
-                    } else if idx < 0 {
+                    if idx >= 2047 {
                         idx = 2047
+                    } else if idx <= 0 {
+                        idx = 0
                     }
                     if self.gfx[idx] == 1 {
                         self.V[0xF] = 1;
