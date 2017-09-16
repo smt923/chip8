@@ -4,6 +4,10 @@ Emulating the [CHIP-8](https://en.wikipedia.org/wiki/CHIP-8) using Rust
 
 ![Tetris](https://i.imgur.com/eEb0CYg.png)
 
+(Incredibly) simple step debugger with `-d` flag:
+
+![Debugging](https://i.imgur.com/61DyUwI.png)
+
 ## problems
 there also seems to be a bug with flickering moving sprites and possibly related; these sprites having broken collisions
 
@@ -13,5 +17,6 @@ there also seems to be a bug with flickering moving sprites and possibly related
 - [X] problems with math opcodes panicing in debug mode due to overflows
 - [X] setup display (SDL2)
 - [X] iron out issue with screen not clearing
+- [ ] clean up debugger code
 - [ ] figure out weird issue with flickering moving objects (seems to cause collisions issues too)
 - [ ] probably a lot more

@@ -38,6 +38,38 @@ fn main() {
     chip8.display.canvas.present();
     let mut event_pump = chip8.display.ctx.event_pump().unwrap();
 
+    if &args[2] == "-d" {
+        let mut count = 0;
+        'running: loop {
+            'wait: loop {
+                for event in event_pump.poll_iter() {
+                    match event {
+                        Event::Quit {..} | Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
+                            std::process::exit(0)
+                        },
+                        Event::KeyDown {keycode: key, ..} => {
+                            if key.unwrap() == Keycode::N {
+                                break 'wait
+                            }
+                        },
+                        _ => {}
+                    }
+                }
+            }
+            chip8.emulate_cycle();
+            if chip8.draw_flag {
+                chip8.display.clear();
+                chip8.display.draw(&chip8.gfx);
+                chip8.draw_flag = false;
+            }
+            println!("{} (total steps: {})\n{}", chip8.dbg_pc(), count, chip8.dbg_opcode());
+            println!("STACK:\n{}\nREGISTERS:\n{}", chip8.dbg_stack(), chip8.dbg_registers());
+            println!("----------------------------------------\n");
+            count += 1;
+            std::thread::sleep(Duration::new(0, 4_000_000u32 / 60));
+        }
+    }
+
     'running: loop {
         for event in event_pump.poll_iter() {
             match event {

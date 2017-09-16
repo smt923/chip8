@@ -358,6 +358,48 @@ impl Chip8 {
     pub fn get_internal_display(&self) -> &[u8] {
         &self.gfx
     }
+
+    pub fn dbg_opcode(&self) -> String {
+        format!("OPCODE: 0x{:04X}", self.opcode)
+    }
+
+    pub fn dbg_pc(&self) -> String {
+        format!("PC:     0x{:04X}", self.pc)
+    }
+
+    pub fn dbg_stack(&self) -> String {
+        let mut stack = String::new();
+        let mut i = 0;
+        let mut c = 0;
+        for e in &self.stack {
+            stack.push_str(&format!("[0x{:X}]: 0x{:04X} ", c, e));
+            i += 1;
+            if i == 4 {
+                stack.push_str("\n");
+                i = 0;
+            }
+            c += 1;
+        }
+        stack = stack.trim_right_matches(" ").to_string();
+        stack
+    }
+
+    pub fn dbg_registers(&self) -> String {
+        let mut regs = String::new();
+        let mut i = 0;
+        let mut c = 0;
+        for e in &self.V {
+            regs.push_str(&format!("[0x{:X}]: 0x{:04X} ", c, e));
+            i += 1;
+            if i == 4 {
+                regs.push_str("\n");
+                i = 0;
+            }
+            c += 1;
+        }
+        regs = regs.trim_right_matches(" ").to_string();
+        regs
+    }
 }
 
 
