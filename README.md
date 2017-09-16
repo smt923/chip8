@@ -2,6 +2,8 @@
 
 Emulating the [CHIP-8](https://en.wikipedia.org/wiki/CHIP-8) using Rust
 
+There's a few sporadic issues with various roms which have varying levels of annoyance, however most roms will load and run just fine for a toy emulator.
+
 ![Tetris](https://i.imgur.com/eEb0CYg.png)
 
 (Incredibly) simple step debugger with `-d` flag:
